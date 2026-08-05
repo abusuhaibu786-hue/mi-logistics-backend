@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CustomerViewSet,
     DashboardStatsView,
+    MonthlyStatsView,
     NotificationViewSet,
     PublicTrackingView,
     ShipmentViewSet,
@@ -19,5 +20,6 @@ router.register(r'notifications', NotificationViewSet, basename='notification')
 urlpatterns = [
     path('', include(router.urls)),
     path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
+    path('dashboard/monthly/', MonthlyStatsView.as_view(), name='dashboard-monthly'),
     path('track/<str:tracking_number>/', PublicTrackingView.as_view(), name='public-track'),
 ]

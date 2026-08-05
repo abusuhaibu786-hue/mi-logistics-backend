@@ -1,4 +1,5 @@
 from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from rest_framework import filters, generics, status, viewsets
 from rest_framework.decorators import action
@@ -152,3 +153,51 @@ class DashboardStatsView(generics.GenericAPIView):
             'inTransitShipments': status_counts.get(Shipment.Status.IN_TRANSIT, 0),
             'deliveredShipments': status_counts.get(Shipment.Status.DELIVERED, 0),
         })
+
+
+def _add_months(d, n):
+    """Return the 1st of the month that is n months after d (n can be negative)."""
+    month_index = d.month - 1 + n
+    year = d.year + month_index // 12
+    month = month_index % 12 + 1
+    return d.replace(year=year, month=month, day=1)
+
+
+class MonthlyStatsView(generics.GenericAPIView):
+    """
+    GET /api/dashboard/monthly/?months=7
+    Real month-by-month revenue/shipment/delivered figures computed from
+    actual Shipment rows (grouped by booked_date's month). Replaces the
+    frontend's old hardcoded MONTHLY_DATA mock used by the Dashboard and
+    Reports charts/tables — every number here comes from the database.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        months_back = int(request.query_params.get('months', 7))
+        start_month = _add_months(timezone.now().date().replace(day=1), -(months_back - 1))
+
+        rows = (
+            Shipment.objects
+            .filter(booked_date__gte=start_month)
+            .annotate(month=TruncMonth('booked_date'))
+            .values('month')
+            .annotate(
+                shipments=Count('id'),
+                delivered=Count('id', filter=Q(status=Shipment.Status.DELIVERED)),
+                revenue=Sum('amount'),
+            )
+        )
+        by_month = {row['month']: row for row in rows}
+
+        labels, revenue, shipments, delivered = [], [], [], []
+        cursor = start_month
+        for _ in range(months_back):
+            row = by_month.get(cursor)
+            labels.append(cursor.strftime('%b'))
+            revenue.append(float(row['revenue']) if row and row['revenue'] else 0)
+            shipments.append(row['shipments'] if row else 0)
+            delivered.append(row['delivered'] if row else 0)
+            cursor = _add_months(cursor, 1)
+
+        return Response({'labels': labels, 'revenue': revenue, 'shipments': shipments, 'delivered': delivered})
