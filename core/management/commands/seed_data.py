@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -20,6 +20,14 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
+        today = timezone.now().date()
+
+        def ago(days):
+            """ISO date string `days` days before today — keeps seed data inside
+            the dashboard's rolling last-7-months window no matter when this
+            command is run, instead of being pinned to a fixed 2024 date."""
+            return (today - timedelta(days=days)).isoformat()
+
         if options['flush']:
             self.stdout.write('Flushing existing data...')
             TrackingEvent.objects.all().delete()
@@ -95,16 +103,16 @@ class Command(BaseCommand):
         # Shipments
         # ---------------------------------------------------------------
         shipments_data = [
-            ('MIL-2024-001', 'Arjun Sharma', 'Chennai', '2.5', 'delivered', 'standard', 320, '2024-02-10', '2024-02-12', None, 'Ramesh Kumar', '+91 9876543210', '14, Anna Nagar, Chennai 600040'),
-            ('MIL-2024-002', 'Priya Nair', 'Coimbatore', '5.0', 'in-transit', 'express', 750, '2024-02-14', None, '2024-02-16', 'Senthil Murugan', '+91 9765432109', '7, RS Puram, Coimbatore 641002'),
-            ('MIL-2024-003', 'Vikram Patel', 'Mumbai', '12.0', 'pending', 'economy', 1200, '2024-02-15', None, '2024-02-20', 'Karthik Raja', '+91 9654321098', '52, Andheri West, Mumbai 400053'),
-            ('MIL-2024-004', 'Meena Krishnan', 'Madurai', '1.2', 'delivered', 'express', 220, '2024-02-08', '2024-02-09', None, 'Ramesh Kumar', '+91 9543210987', '3, Goripalayam, Madurai 625002'),
-            ('MIL-2024-005', 'Suresh Babu', 'Bengaluru', '8.0', 'in-transit', 'standard', 890, '2024-02-13', None, '2024-02-17', 'Senthil Murugan', '+91 9432109876', '88, Indiranagar, Bengaluru 560038'),
-            ('MIL-2024-006', 'Lakshmi Devi', 'Trichy', '3.4', 'delivered', 'standard', 280, '2024-02-05', '2024-02-06', None, 'Karthik Raja', '+91 9321098765', '21, Thillai Nagar, Trichy 620018'),
-            ('MIL-2024-007', 'Ravi Shankar', 'Delhi', '20.0', 'pending', 'economy', 2400, '2024-02-15', None, '2024-02-21', 'Ramesh Kumar', '+91 9210987654', '15, Rohini, Delhi 110085'),
-            ('MIL-2024-008', 'Kavitha Sundaram', 'Tirunelveli', '4.5', 'in-transit', 'express', 420, '2024-02-14', None, '2024-02-16', 'Karthik Raja', '+91 9109876543', '9, Krishnapuram, Tirunelveli 627011'),
-            ('MIL-2024-009', 'Muthu Raj', 'Salem', '7.0', 'delivered', 'standard', 560, '2024-02-07', '2024-02-09', None, 'Senthil Murugan', '+91 9098765432', '34, Fairlands, Salem 636016'),
-            ('MIL-2024-010', 'Divya Menon', 'Kochi', '9.0', 'cancelled', 'express', 980, '2024-02-11', None, None, 'Ramesh Kumar', '+91 8987654321', '5, Ernakulam, Kochi 682016'),
+            ('MIL-2024-001', 'Arjun Sharma', 'Chennai', '2.5', 'delivered', 'standard', 320, ago(12), ago(10), None, 'Ramesh Kumar', '+91 9876543210', '14, Anna Nagar, Chennai 600040'),
+            ('MIL-2024-002', 'Priya Nair', 'Coimbatore', '5.0', 'in-transit', 'express', 750, ago(8), None, ago(2), 'Senthil Murugan', '+91 9765432109', '7, RS Puram, Coimbatore 641002'),
+            ('MIL-2024-003', 'Vikram Patel', 'Mumbai', '12.0', 'pending', 'economy', 1200, ago(38), None, ago(20), 'Karthik Raja', '+91 9654321098', '52, Andheri West, Mumbai 400053'),
+            ('MIL-2024-004', 'Meena Krishnan', 'Madurai', '1.2', 'delivered', 'express', 220, ago(6), ago(5), None, 'Ramesh Kumar', '+91 9543210987', '3, Goripalayam, Madurai 625002'),
+            ('MIL-2024-005', 'Suresh Babu', 'Bengaluru', '8.0', 'in-transit', 'standard', 890, ago(65), None, ago(50), 'Senthil Murugan', '+91 9432109876', '88, Indiranagar, Bengaluru 560038'),
+            ('MIL-2024-006', 'Lakshmi Devi', 'Trichy', '3.4', 'delivered', 'standard', 280, ago(95), ago(93), None, 'Karthik Raja', '+91 9321098765', '21, Thillai Nagar, Trichy 620018'),
+            ('MIL-2024-007', 'Ravi Shankar', 'Delhi', '20.0', 'pending', 'economy', 2400, ago(3), None, ago(4), 'Ramesh Kumar', '+91 9210987654', '15, Rohini, Delhi 110085'),
+            ('MIL-2024-008', 'Kavitha Sundaram', 'Tirunelveli', '4.5', 'in-transit', 'express', 420, ago(125), None, ago(110), 'Karthik Raja', '+91 9109876543', '9, Krishnapuram, Tirunelveli 627011'),
+            ('MIL-2024-009', 'Muthu Raj', 'Salem', '7.0', 'delivered', 'standard', 560, ago(155), ago(153), None, 'Senthil Murugan', '+91 9098765432', '34, Fairlands, Salem 636016'),
+            ('MIL-2024-010', 'Divya Menon', 'Kochi', '9.0', 'cancelled', 'express', 980, ago(180), None, None, 'Ramesh Kumar', '+91 8987654321', '5, Ernakulam, Kochi 682016'),
         ]
 
         shipments = {}
